@@ -1438,6 +1438,8 @@ describe('$mdDialog', function() {
       document.body.appendChild(parent);
 
       $mdDialog.show({template: template, parent: parent});
+      runAnimation();
+
       $rootScope.$apply();
 
       // It should add two focus traps to the document around the dialog content.

@@ -1605,6 +1605,26 @@ describe('<md-autocomplete>', function() {
 
   describe('dropdown position', function() {
 
+    var DEFAULT_MAX_ITEMS = 5;
+    var DEFAULT_ITEM_HEIGHT = 48;
+
+    var dropdownItems = DEFAULT_MAX_ITEMS;
+
+    /**
+     * Function to create fake matches with the given dropdown items.
+     * Useful when running tests against the dropdown max items calculations.
+     * @returns {Array} Fake matches.
+     */
+    function fakeItemMatch() {
+       var matches = [];
+
+      for (var i = 0; i < dropdownItems; i++) {
+        matches.push('Item ' + i);
+      }
+
+      return matches;
+    }
+
     it('should adjust the width when the window resizes', inject(function($timeout, $window) {
       var scope = createScope();
 
@@ -1707,6 +1727,104 @@ describe('<md-autocomplete>', function() {
 
       // The scroll container should have a width of 200px, since we changed the parents width.
       expect(scrollContainer.style.minWidth).toBe('200px');
+
+      document.body.removeChild(parent[0]);
+    }));
+
+    it('should calculate the height from the default max items', inject(function($timeout) {
+      var scope = createScope();
+
+      scope.match = fakeItemMatch;
+
+      var template =
+        '<div>' +
+          '<md-autocomplete ' +
+              'md-search-text="searchText" ' +
+              'md-items="item in match(searchText)" ' +
+              'md-item-text="item" ' +
+              'md-min-length="0" ' +
+              'placeholder="placeholder">' +
+            '<span md-highlight-text="searchText">{{item}}</span>' +
+          '</md-autocomplete>' +
+        '</div>';
+
+      var parent = compile(template, scope);
+      var element = parent.find('md-autocomplete');
+      var ctrl = element.controller('mdAutocomplete');
+
+      // Add container to the DOM to be able to test the rect calculations.
+      document.body.appendChild(parent[0]);
+
+      $timeout.flush();
+
+      // Focus the autocomplete and trigger a query to be able to open the dropdown.
+      ctrl.focus();
+      scope.$apply('searchText = "Query 1"');
+      waitForVirtualRepeat(element);
+
+      var scrollContainer = document.body.querySelector('.md-virtual-repeat-container');
+
+      expect(scrollContainer).toBeTruthy();
+      expect(scrollContainer.style.maxHeight).toBe(DEFAULT_MAX_ITEMS * DEFAULT_ITEM_HEIGHT + 'px');
+
+      dropdownItems = 6;
+
+      // Trigger a new query to request an update of the items and dropdown.
+      scope.$apply('searchText = "Query 2"');
+
+      // The dropdown should not increase its height because of the new extra item.
+      expect(scrollContainer.style.maxHeight).toBe(DEFAULT_MAX_ITEMS * DEFAULT_ITEM_HEIGHT + 'px');
+
+      document.body.removeChild(parent[0]);
+    }));
+
+    it('should calculate its height from the specified max items', inject(function($timeout) {
+      var scope = createScope();
+      var maxDropdownItems = 2;
+
+      // Set the current dropdown items to the new maximum.
+      dropdownItems = maxDropdownItems;
+      scope.match = fakeItemMatch;
+
+      var template =
+        '<div>' +
+            '<md-autocomplete ' +
+            'md-search-text="searchText" ' +
+            'md-items="item in match(searchText)" ' +
+            'md-item-text="item" ' +
+            'md-min-length="0" ' +
+            'md-dropdown-items="' + maxDropdownItems +'"' +
+            'placeholder="placeholder">' +
+          '<span md-highlight-text="searchText">{{item}}</span>' +
+        '</md-autocomplete>' +
+        '</div>';
+
+      var parent = compile(template, scope);
+      var element = parent.find('md-autocomplete');
+      var ctrl = element.controller('mdAutocomplete');
+
+      // Add container to the DOM to be able to test the rect calculations.
+      document.body.appendChild(parent[0]);
+
+      $timeout.flush();
+
+      // Focus the autocomplete and trigger a query to be able to open the dropdown.
+      ctrl.focus();
+      scope.$apply('searchText = "Query 1"');
+      waitForVirtualRepeat(element);
+
+      var scrollContainer = document.body.querySelector('.md-virtual-repeat-container');
+
+      expect(scrollContainer).toBeTruthy();
+      expect(scrollContainer.style.maxHeight).toBe(maxDropdownItems * DEFAULT_ITEM_HEIGHT + 'px');
+
+      dropdownItems = 6;
+
+      // Trigger a new query to request an update of the items and dropdown.
+      scope.$apply('searchText = "Query 2"');
+
+      // The dropdown should not increase its height because of the new extra item.
+      expect(scrollContainer.style.maxHeight).toBe(maxDropdownItems * DEFAULT_ITEM_HEIGHT + 'px');
 
       document.body.removeChild(parent[0]);
     }));

@@ -1,6 +1,13 @@
+/*
+ * @ngdoc module
+ * @name material.core.interaction
+ * @description
+ * User interaction detection to provide proper accessibility.
+ */
 angular
   .module('material.core.interaction', [])
   .service('$mdInteraction', MdInteractionService);
+
 
 /*
  * @ngdoc service
@@ -12,33 +19,33 @@ angular
  * Service which keeps track of the last interaction type and validates them for several browsers.
  * The service hooks into the document's body and listens for touch, mouse and keyboard events.
  *
- * The last interaction type can be retrieved by using the `getLastInteractionType` method, which returns
- * the following possible values:
- * - `touch`
- * - `mouse`
- * - `keyboard`
+ * The most recent interaction type can be retrieved by calling the `getLastInteractionType` method.
  *
  * Here is an example markup for using the interaction service.
- * ```
+ *
+ * <hljs lang="js">
  *   var lastType = $mdInteraction.getLastInteractionType();
+ *
  *   if (lastType === 'keyboard') {
+ *     // We only restore the focus for keyboard users.
  *     restoreFocus();
- *   }}
- * ```
+ *   }
+ * </hljs>
  *
  */
 function MdInteractionService($timeout) {
-  var body = angular.element(document.body);
-  var mouseEvent = window.MSPointerEvent ? 'MSPointerDown' : window.PointerEvent ? 'pointerdown' : 'mousedown';
-  var buffer = false;
-  var timer;
-  var lastInteractionType;
+  this.$timeout = $timeout;
+
+  this.bodyElement = angular.element(document.body);
+  this.isBuffering = false;
+  this.bufferTimeout = null;
+  this.lastInteractionType = null;
 
   // Type Mappings for the different events
   // There will be three three interaction types
   // `keyboard`, `mouse` and `touch`
   // type `pointer` will be evaluated in `pointerMap` for IE Browser events
-  var inputMap = {
+  this.inputEventMap = {
     'keydown': 'keyboard',
     'mousedown': 'mouse',
     'mouseenter': 'mouse',
@@ -49,47 +56,77 @@ function MdInteractionService($timeout) {
 
   // IE PointerDown events will be validated in `touch` or `mouse`
   // Index numbers referenced here: https://msdn.microsoft.com/library/windows/apps/hh466130.aspx
-  var pointerMap = {
+  this.iePointerMap = {
     2: 'touch',
     3: 'touch',
     4: 'mouse'
   };
 
-  function onInput(event) {
-    if (buffer) return;
-    var type = inputMap[event.type];
-    if (type === 'pointer') {
-      type = (typeof event.pointerType === 'number') ? pointerMap[event.pointerType] : event.pointerType;
-    }
-    lastInteractionType = type;
-  }
-
-  function onBufferInput(event) {
-    $timeout.cancel(timer);
-
-    onInput(event);
-    buffer = true;
-
-    // The timeout of 650ms is needed to delay the touchstart, because otherwise the touch will call
-    // the `onInput` function multiple times.
-    timer = $timeout(function() {
-      buffer = false;
-    }, 650, false);
-  }
-
-  body.on('keydown', onInput);
-  body.on(mouseEvent, onInput);
-  body.on('mouseenter', onInput);
-  if ('ontouchstart' in document.documentElement) {
-    body.on('touchstart', onBufferInput);
-  }
-
-  /**
-   * Gets the last interaction type triggered in body.
-   * Possible return values are `mouse`, `keyboard` and `touch`
-   * @returns {string}
-   */
-  this.getLastInteractionType = function() {
-    return lastInteractionType;
-  }
+  this.initializeEvents();
 }
+
+/**
+ * Initializes the interaction service, by registering all interaction events to the
+ * body element.
+ */
+MdInteractionService.prototype.initializeEvents = function() {
+  // IE browsers can also trigger pointer events, which also leads to an interaction.
+  var pointerEvent = 'MSPointerEvent' in window ? 'MSPointerDown' : 'PointerEvent' in window ? 'pointerdown' : null;
+
+  this.bodyElement.on('keydown mousedown', this.onInputEvent.bind(this));
+
+  if ('ontouchstart' in document.documentElement) {
+    this.bodyElement.on('touchstart', this.onBufferInputEvent.bind(this));
+  }
+
+  if (pointerEvent) {
+    this.bodyElement.on(pointerEvent, this.onInputEvent.bind(this));
+  }
+
+};
+
+/**
+ * Event listener for normal interaction events, which should be tracked.
+ * @param event {MouseEvent|KeyboardEvent|PointerEvent}
+ */
+MdInteractionService.prototype.onInputEvent = function(event) {
+  if (this.isBuffering) {
+    return;
+  }
+
+  var type = this.inputEventMap[event.type];
+
+  if (type === 'pointer') {
+    type = this.iePointerMap[event.pointerType] || event.pointerType;
+  }
+
+  this.lastInteractionType = type;
+};
+
+/**
+ * Event listener for interaction events which should be buffered (touch events).
+ * @param event {TouchEvent}
+ */
+MdInteractionService.prototype.onBufferInputEvent = function(event) {
+  this.$timeout.cancel(this.bufferTimeout);
+
+  this.onInputEvent(event);
+  this.isBuffering = true;
+
+  // The timeout of 650ms is needed to delay the touchstart, because otherwise the touch will call
+  // the `onInput` function multiple times.
+  this.bufferTimeout = this.$timeout(function() {
+    this.isBuffering = false;
+  }.bind(this), 650, false);
+
+};
+
+/**
+ * @ngdoc method
+ * @name $mdInteraction#getLastInteractionType
+ * @description Retrieves the last interaction type triggered in body.
+ * @returns {'mouse'|'keyboard'|'touch'} Last interaction type.
+ */
+MdInteractionService.prototype.getLastInteractionType = function() {
+  return this.lastInteractionType;
+};

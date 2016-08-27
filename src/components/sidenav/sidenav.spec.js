@@ -243,77 +243,75 @@ describe('mdSidenav', function() {
   describe("focus", function() {
 
     var $material, $mdInteraction, $mdConstant;
+    var triggerElement;
 
-    beforeEach( inject(function(_$material_, _$mdInteraction_, _$mdConstant_) {
-      $material = _$material_;
-      $mdInteraction = _$mdInteraction_;
-      $mdConstant = _$mdConstant_
+    beforeEach(inject(function($injector) {
+      $material = $injector.get('$material');
+      $mdInteraction = $injector.get('$mdInteraction');
+      $mdConstant = $injector.get('$mdInteraction');
+
+      triggerElement = angular.element('<button>Trigger Element</button>');
+      document.body.appendChild(triggerElement[0]);
     }));
+
+    afterEach(function() {
+      triggerElement.remove();
+    });
+
+    function dispatchEvent(eventName) {
+      angular.element(document.body).triggerHandler(eventName);
+    }
 
     function flush() {
       $material.flushInterimElement();
     }
 
-    function setupTrigger() {
-      var el;
-      inject(function($compile, $rootScope) {
-        var parent = angular.element(document.body);
-        el = angular.element('<button>Toggle</button>');
-        parent.append(el);
-        $compile(parent)($rootScope);
-        $rootScope.$apply();
-      });
-      return el;
+    function blur() {
+      if ('documentMode' in document) {
+        document.body.focus();
+      } else {
+        triggerElement.blur();
+      }
     }
 
-    it("should restore after sidenav triggered by keyboard", function(done) {
-      var sidenavElement = setup('');
-      var triggerElement = setupTrigger();
-      var controller = sidenavElement.controller('mdSidenav');
+    it("should restore after sidenav triggered by keyboard", function() {
+      var sidenavEl = setup('');
+      var controller = sidenavEl.controller('mdSidenav');
 
       triggerElement.focus();
 
-      var keyboardEvent = document.createEvent("KeyboardEvent");
-      keyboardEvent.initEvent("keydown", true, true, window, 0, 0, 0, 0, $mdConstant.KEY_CODE.ENTER,  $mdConstant.KEY_CODE.ENTER);
-      triggerElement[0].dispatchEvent(keyboardEvent);
+      dispatchEvent('keydown');
 
       controller.$toggleOpen(true);
       flush();
 
-      triggerElement.blur();
+      blur();
 
       controller.$toggleOpen(false);
       flush();
 
       expect($mdInteraction.getLastInteractionType()).toBe("keyboard");
       expect(document.activeElement).toBe(triggerElement[0]);
-      done();
     });
 
-    it("should not restore after sidenav triggered by mouse", function(done) {
-      var sidenavElement = setup('');
-      var triggerElement = setupTrigger();
-      var controller = sidenavElement.controller('mdSidenav');
+    it("should not restore after sidenav triggered by mouse", function() {
+      var sidenavEl = setup('');
+      var controller = sidenavEl.controller('mdSidenav');
 
       triggerElement.focus();
 
-      var mouseEvent = document.createEvent("MouseEvent");
-      mouseEvent.initMouseEvent("mousedown", true, true, window, null, 0, 0, 0, 0, false, false, false, false, 0, null);
-      triggerElement[0].dispatchEvent(mouseEvent);
+      dispatchEvent('mousedown');
 
       controller.$toggleOpen(true);
       flush();
 
-      expect(document.activeElement).toBe(triggerElement[0]);
-
-      triggerElement.blur();
+      blur();
 
       controller.$toggleOpen(false);
       flush();
 
       expect($mdInteraction.getLastInteractionType()).toBe("mouse");
       expect(document.activeElement).not.toBe(triggerElement[0]);
-      done();
     });
 
   });

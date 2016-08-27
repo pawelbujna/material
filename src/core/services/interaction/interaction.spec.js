@@ -3,27 +3,28 @@ describe("$mdInteraction service", function() {
 
   beforeEach(module('material.core'));
 
-  beforeEach(inject(function(_$mdInteraction_) {
-    $mdInteraction = _$mdInteraction_;
+  beforeEach(inject(function($injector) {
+    $mdInteraction = $injector.get('$mdInteraction');
   }));
 
   describe("last interaction type", function() {
 
-    it("imitates a basic keyboard interaction and checks it", function() {
+    var bodyElement = null;
 
-      var event = document.createEvent('Event');
-      event.keyCode = 37;
-      event.initEvent('keydown', false, true);
-      document.body.dispatchEvent(event);
+    beforeEach(function() {
+      bodyElement = angular.element(document.body);
+    });
+
+    it("should detect a keyboard interaction", function() {
+
+      bodyElement.triggerHandler('keydown');
 
       expect($mdInteraction.getLastInteractionType()).toBe('keyboard');
     });
 
-    it("dispatches a mousedown event on the document body and checks it", function() {
+    it("should detect a mouse interaction", function() {
 
-      var event = document.createEvent("MouseEvent");
-      event.initMouseEvent("mousedown", true, true, window, null, 0, 0, 0, 0, false, false, false, false, 0, null);
-      document.body.dispatchEvent(event);
+      bodyElement.triggerHandler('mousedown');
 
       expect($mdInteraction.getLastInteractionType()).toBe("mouse");
     });

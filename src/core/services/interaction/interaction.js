@@ -1,4 +1,4 @@
-/*
+/**
  * @ngdoc module
  * @name material.core.interaction
  * @description
@@ -9,7 +9,7 @@ angular
   .service('$mdInteraction', MdInteractionService);
 
 
-/*
+/**
  * @ngdoc service
  * @name $mdInteraction
  * @module material.core.interaction
@@ -125,7 +125,7 @@ MdInteractionService.prototype.onBufferInputEvent = function(event) {
  * @ngdoc method
  * @name $mdInteraction#getLastInteractionType
  * @description Retrieves the last interaction type triggered in body.
- * @returns {'mouse'|'keyboard'|'touch'} Last interaction type.
+ * @returns {string|null} Last interaction type.
  */
 MdInteractionService.prototype.getLastInteractionType = function() {
   return this.lastInteractionType;
